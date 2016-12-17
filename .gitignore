@@ -1,0 +1,13 @@
+# InteliJ Specific Ignores
+.idea
+*.iml
+
+#Project Specific Ignores
+target
+simple.log
+out
+
+# Eclipse Specific Ignores
+.classpath
+.project
+.settings
