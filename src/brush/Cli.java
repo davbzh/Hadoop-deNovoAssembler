@@ -38,11 +38,15 @@ public class Cli {
 
                 //chop k-mers and determine read relationship by k-mer overlapping positions
                 MatchPrefix mp = new MatchPrefix();
-                mp.run("/test_out1","/test_out2", "21");
+                mp.run("/test_out1","/test_out2", "21", "99");
 
                 //Verify and group edges
                 VerifyOverlap vo = new VerifyOverlap();
-                vo.run("/test_out2","/test_out3");
+                vo.run("/test_out2", "/test_out3");
+
+                //TransitiveReduction
+                TransitiveReduction tr = new TransitiveReduction();
+                tr.run("/test_out3","/test_out4", "0.00f", "99");
 
             } else {
                 help();

@@ -167,14 +167,10 @@ public class Node {
     public static String str2dna(String seq) {
         StringBuffer sb = new StringBuffer(); // @see:
         // https://docs.oracle.com/javase/7/docs/api/java/lang/StringBuffer.html
-
         int l = seq.length();
-
         int offset = 0;
-
         while (offset < l) {
             int r = l - offset;
-
             if (r >= 4) {
                 sb.append(str2dna_.get(seq.substring(offset, offset + 4)));
                 offset += 4;
@@ -183,7 +179,6 @@ public class Node {
                 offset += r;
             }
         }
-
         return sb.toString();
     }
 
@@ -2140,7 +2135,7 @@ public class Node {
 		double random_n = rand * 10000000;
 		System.out.println(random_n);
 		*/
-        String f_dna = "CTGTGTATTTTATAGGCTTAC";
+        String f_dna = "ATATGCCAGAAGTAAGCCTATAAAATACACAGGTAA";
         String r_dna = Node.rc(f_dna);
         System.out.println(r_dna);
     }

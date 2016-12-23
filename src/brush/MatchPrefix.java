@@ -38,10 +38,14 @@ public class MatchPrefix extends Configured implements Tool {
 
         //extract kmer from input
         int K = 0;
+        //Insert size it is estimated from BWA alignment
+        int insert_size = 0;
+
         protected void setup(Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-
             String Kmer = conf.get("Kmer");
+            String InsertSize = conf.get("InsertSize");
+            insert_size = Integer.parseInt(InsertSize);
             K =  Integer.parseInt(Kmer);
         }
 
@@ -54,15 +58,12 @@ public class MatchPrefix extends Configured implements Tool {
 
             String[] fields = nodetxt.toString().split("\t");
             String[] reads = fields[3].toString().split("!");
-
             String read_f = Node.dna2str(reads[0]);
             String read_r = Node.dna2str(reads[1]);
 
-            //TODO: Instert size should come as input ==> it is estimated from BWA alignment
-            int inser_size = 99;
             //Gap between pair-end reads is calculated as
-            int pair_gap = inser_size - (read_f.length() + read_r.length());
-            int pair_distance = inser_size - read_f.length();
+            int pair_gap = insert_size - (read_f.length() + read_r.length());
+            int pair_distance = insert_size - read_f.length();
             int total_node_length = (read_f.length() + read_r.length()) + pair_gap;
 
             // As a first step lets start with brashes
@@ -89,20 +90,34 @@ public class MatchPrefix extends Configured implements Tool {
                     String f_window_r = Node.str2dna(Node.rc(f_window_tmp));
 
                     //extract overlap start position
-                    int overlap_start_position_f = K + i;
+                    //int overlap_start_position_f = K + i;
+                    int overlap_start_position_f = read_f.length() - i;
+
                     //emit to mapper
-                    context.write(new Text(f_window), new Text(node.getNodeId() + "\t" + "ff" + "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_f + "\t" + node.cov() + "\t" + (read_f.length() + K)));
-                    context.write(new Text(f_window_r), new Text(node.getNodeId() + "\t" + "fr" + "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_f + "\t" + node.cov() + "\t" + (read_f.length() + K)));
+                    context.write(new Text(f_window), new Text(node.getNodeId() + "\t" + "ff" + "\t" +
+                            Node.SUFFIXMSG + "\t" + overlap_start_position_f + "\t" + node.cov() + "\t" +
+                            (read_f.length() + K)));
+                    context.write(new Text(f_window_r), new Text(node.getNodeId() + "\t" + "fr" + "\t" +
+                            Node.SUFFIXMSG + "\t" + overlap_start_position_f + "\t" + node.cov() + "\t" +
+                            (read_f.length() + K)));
 
                     //extract k-mer on r (/2) read and reverse complement each of them
                     String r_window_tmp = read_r.substring(i, i + K);
                     String r_window_r = Node.str2dna(Node.rc(r_window_tmp));
                     String r_window_f = Node.str2dna(r_window_tmp);
+
                     //extract overlap start position
-                    int overlap_start_position_r = (read_f.length() + pair_gap) + K + i;
+                    //int overlap_start_position_r = (read_f.length() + pair_gap) + K + i;
+                    int overlap_start_position_r = (read_f.length() + pair_gap + read_r.length()) - ((read_f.length() +
+                            pair_gap + read_r.length()) - K - i);
+
                     //emit to mapper
-                    context.write(new Text(r_window_r), new Text(node.getNodeId() + "\t" + "rr" + "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_r + "\t" + node.cov() + "\t" + (total_node_length + K)));
-                    context.write(new Text(r_window_f), new Text(node.getNodeId() + "\t" + "rf" + "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_r + "\t" + node.cov() + "\t" + (total_node_length + K)));
+                    context.write(new Text(r_window_r), new Text(node.getNodeId() + "\t" + "rr" +
+                            "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_r + "\t" + node.cov() +
+                            "\t" + (total_node_length + K)));
+                    context.write(new Text(r_window_f), new Text(node.getNodeId() + "\t" + "rf" + "\t" +
+                            Node.SUFFIXMSG + "\t" + overlap_start_position_r + "\t" + node.cov() + "\t" +
+                            (total_node_length + K)));
                 }
 
                 //end with prefix of r (/2) read
@@ -236,7 +251,6 @@ public class MatchPrefix extends Configured implements Tool {
                 nodes = idx_nodes.get(idx);
 
                 Map<String, List<String>> edges_list = new HashMap<String, List<String>>();
-                //if (elist.size() > LowKmer /* && prefix_sum < HighKmer */ ) {
                 Collections.sort(elist, new OvelapSizeComparator());
                 for (int i = 0; i < elist.size() /*&& i < HighKmer*/; i++) {
                     if (edges_list.containsKey(elist.get(i).edge_type)) {
@@ -249,7 +263,6 @@ public class MatchPrefix extends Configured implements Tool {
                     }
                     context.getCounter("K-mer frequency filter", "nodecount").increment(1);
                 }
-                //}
 
                 //\\//: loop through node ids
                 for (String nodeid_dir : nodes.keySet()) {
@@ -301,17 +314,19 @@ public class MatchPrefix extends Configured implements Tool {
     }
 
     //\\//:
-    public int run(String inputPath, String outputPath, String Kmer ) throws Exception {
+    public int run(String inputPath, String outputPath, String Kmer, String InsertSize ) throws Exception {
         sLogger.info("Tool name: MatchPrefix");
         sLogger.info(" - input: " + inputPath);
         sLogger.info(" - output: " + outputPath);
         sLogger.info(" - Kmer_length: " + Kmer);
+        sLogger.info(" - InsertSize: " + InsertSize);
 
         //\\//:
         Configuration conf = new Configuration();
 
         //Strore Kmer value to use it in mapreduce
         conf.set("Kmer", Kmer);
+        conf.set("InsertSize", InsertSize);
 
         //\\//:
         int K = Integer.parseInt(Kmer);
@@ -352,10 +367,11 @@ public class MatchPrefix extends Configured implements Tool {
         String inputPath = args[0];
         String outputPath = args[1];
         String Kmer = args[2];
+        String InsertSize = args[3];
 
         long starttime = System.currentTimeMillis();
 
-        run(inputPath, outputPath, Kmer);
+        run(inputPath, outputPath, Kmer, InsertSize);
 
         long endtime = System.currentTimeMillis();
 

@@ -1,17 +1,13 @@
 package brush;
-
 /*
 TransitiveReduction.java
 2012 Ⓒ CloudBrush, developed by Chien-Chih Chen (rocky@iis.sinica.edu.tw),
 released under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 at: https://github.com/ice91/CloudBrush
-
 */
-
 /**
  * Modified by davbzh on 2016-12-17.
  */
-
 
 import java.io.IOException;
 import java.util.Collections;
@@ -40,56 +36,11 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import org.apache.log4j.Logger;
 
-
 public class TransitiveReduction extends Configured implements Tool {
     private static final Logger sLogger = Logger.getLogger(TransitiveReduction.class);
 
-    /*
-    public static int _min2(int a, int b) {
-        return (a < b) ? a : b;
-    }
-
-    public static int _max2(int a, int b) {
-        return (a > b) ? a : b;
-    }
-    */
-
-    public static int _min3(int a, int b, int c) {
-        return a < b ? a < c ? a : c : b < c ? b : c;
-    }
-
-    /*
-    public static int fastdistance(String word1, String word2) {
-        int len1 = word1.length();
-        int len2 = word2.length();
-
-        int[][] d = new int[len1 + 1][len2 + 1];
-
-        for (int i = 0; i <= len1; i++) {
-            d[i][0] = i;
-        }
-
-        for (int j = 0; j <= len2; j++) {
-            d[0][j] = j;
-        }
-
-        for (int i = 1; i <= len1; i++) {
-            char w1 = word1.charAt(i - 1);
-            for (int j = 1; j <= len2; j++) {
-                char w2 = word2.charAt(j - 1);
-                int e = (w1 == w2) ? 0 : 1;
-
-                d[i][j] = _min3(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + e);
-            }
-        }
-
-        return d[len1][len2];
-    }
-    */
-
     ///////////////////////////////////////////////////////////////////////////
     // TransitiveReductionMapper
-
     public static class TransitiveReductionMapper extends Mapper<LongWritable, Text, Text, Text>  {
 
         public void map(LongWritable lineid, Text nodetxt, Context context) throws IOException, InterruptedException {
@@ -107,12 +58,14 @@ public class TransitiveReduction extends Configured implements Tool {
 
                         //String con = Node.flip_link(key);
                         String con = key;
+                        //Emit to reducer
                         context.write(new Text(edge_id), new Text(Node.OVALMSG + "\t" + node.getNodeId() + "\t" + node.str_raw() + "\t" + con + "\t" + oval_size));
                     }
                 }
             }
             List<String> emit_node = new ArrayList<String>();
-            //\\//:
+
+            //Emit to reducer
             context.write(new Text(node.getNodeId()), new Text(node.toNodeMsg()));
             context.getCounter("Brush", "nodes").increment(1);
         }
@@ -121,20 +74,17 @@ public class TransitiveReduction extends Configured implements Tool {
     ///////////////////////////////////////////////////////////////////////////
     // TransitiveReductionReducer
     public static class TransitiveReductionReducer extends Reducer<Text, Text, Text, Text> {
-        //\\//:
-        //TODO: I need to generate K from global config file
-        //private static int K = 0;
-        //private static int K = 21;
+
         static public float ERRORRATE = 0.00f;
+        static public int Insert_size = 0;
 
-        /*:
-        public void configure(Configuration job) {
-            //TODO: I need to generate K from global config file
-            K = Integer.parseInt(job.get("K"));
-            // ERRORRATE = Float.parseFloat(job.get("ERRORRATE"));
+        protected void setup(Context context) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            String ERROR_RATE = conf.get("err_rate");
+            String InsertSize = conf.get("InsertSize");
+            ERRORRATE =  Float.parseFloat(ERROR_RATE);
+            Insert_size = Integer.parseInt(InsertSize);
         }
-        */
-
 
         public class OverlapInfo {
             public String id;
@@ -142,18 +92,34 @@ public class TransitiveReduction extends Configured implements Tool {
             public String edge_type;
             public int overlap_size;
 
+            //Separate f and r reads
+            String[] reads;
+            public String read_f;
+            public String read_r;
+
             public OverlapInfo(String[] vals, int offset) throws IOException {
 
                 if (!vals[offset].equals(Node.OVALMSG)) {
                     throw new IOException("Unknown message type");
                 }
+
                 id = vals[offset + 1];
                 str = vals[offset + 2];
                 edge_type = vals[offset + 3];
                 overlap_size = Integer.parseInt(vals[offset + 4]);
 
+                reads = str.toString().split("!");
+                read_f = reads[0];
+                read_r = reads[1];
+                if (edge_type.equals("ff")) {
+                    str = read_f;
+                } else if (edge_type.equals("rr")) {
+                    str = read_r;
+                } else {
+                    //TODO: I need to also check for fr and rf orientations
+                    throw new IOException("ERROR: Unknown edge type " + edge_type);
+                }
             }
-
             public String toString() {
                 return edge_type + " " + id + " " + overlap_size + " " + str;
             }
@@ -224,32 +190,26 @@ public class TransitiveReduction extends Configured implements Tool {
         }
 
         //\\//:
-        public void reduce(Text nodeid, Iterable<Text> iter,  Context context) throws IOException, InterruptedException
-        {
+        public void reduce(Text nodeid, Iterable<Text> iter,  Context context) throws IOException, InterruptedException {
             Node node = new Node(nodeid.toString());
             List<OverlapInfo> o_flist = new ArrayList<OverlapInfo>();
             List<OverlapInfo> o_rlist = new ArrayList<OverlapInfo>();
 
             int sawnode = 0;
 
-            //\\//:
             for(Text msg : iter) {
 
-                //\\//:
                 String [] vals = msg.toString().split("\t"); //\\//: tokenize it
-
                 if (vals[0].equals(Node.NODEMSG)) {
                     node.parseNodeMsg(vals, 0);
                     sawnode++;
                 } else if (vals[0].equals(Node.OVALMSG)) {
                     OverlapInfo oi = new OverlapInfo(vals, 0);
-
                     if (oi.edge_type.charAt(0) == 'f') {
                         o_flist.add(oi);
                     } else if (oi.edge_type.charAt(0) == 'r') {
                         o_rlist.add(oi);
                     }
-
                 } else {
                     throw new IOException("Unknown msgtype: " + msg);
                 }
@@ -278,22 +238,26 @@ public class TransitiveReduction extends Configured implements Tool {
                     // String node_dir = oval_type.substring(0, 1);
                     String oval_dir = oval_type.substring(1);
                     int oval_size = o_flist.get(i).overlap_size;
-                    String edge_content = oval_id + "!" + oval_size;
 
+                    String edge_content = oval_id + "!" + oval_size;
                     String oval_seq_tmp = Node.dna2str(o_flist.get(i).str);
                     String oval_seq;
+                    //-----------------------------------------------------
+                    //TODO: remove?
                     if (oval_dir.equals("r")) {
                         oval_seq = Node.rc(oval_seq_tmp);
                     } else {
                         oval_seq = oval_seq_tmp;
                     }
+                    //------------------------------------------------------
 
+                    //--------------------------------------------------------------------------------------
+                    //TODO: remove!
                     // \\ Self contained filter
                     if (oval_size == oval_seq.length() && oval_size == node.str().length()) {
-                        //\\//:
                         context.getCounter("Brush", "contained_edge").increment(1);
                     }
-
+                    /*
                     // \\\\\\\\\\\ Maximal Overlap filter
                     List<String> stored_IDs = IDs_flist.get(oval_type);
                     boolean has_large_overlap = false;
@@ -304,10 +268,15 @@ public class TransitiveReduction extends Configured implements Tool {
                         node.addRemovalEdge(oval_id, Node.flip_link(oval_type), node.getNodeId(), oval_size);
                         continue;
                     }
+                    System.out.println("has_large_overlap: " + has_large_overlap);
+                    */
+                    //---------------------------------------------------------------------------------------
 
                     // \\\\\\\\\\\ Transitive Reduction filter
+                    //TODO: what is transitive edge?
                     List<Prefix> stored_PREFIXs = PREFIXs_list.get("f");
                     String prefix = oval_seq.substring(oval_size);
+
                     boolean has_trans_edge = false;
                     for (int j = 0; stored_PREFIXs != null && j < stored_PREFIXs.size(); j++) {
                         if (stored_PREFIXs.get(j).oval_size == oval_size
@@ -316,15 +285,12 @@ public class TransitiveReduction extends Configured implements Tool {
                         }
                         if (ERRORRATE <= 0) {
                             if (prefix.startsWith(stored_PREFIXs.get(j).suffix)) {
-                                //\\//:
-                                //reporter.incrCounter("Brush", "trans_edge", 1);
                                 context.getCounter("Brush", "trans_edge").increment(1);
                                 has_trans_edge = true;
                                 node.addRemovalEdge(oval_id, Node.flip_link(oval_type), node.getNodeId(), oval_size);
                                 break;
                             }
                         }
-
                     }
                     if (has_trans_edge) {
                         continue;
@@ -350,8 +316,25 @@ public class TransitiveReduction extends Configured implements Tool {
                         tmp_IDs.add(oval_id);
                         IDs_flist.put(oval_type, tmp_IDs);
                     }
+
+                    System.out.println("IDs_flist: " + IDs_flist.toString() + " edges_list: " +  edges_list.toString());
+
                 }
             }
+
+
+
+            //--------------------------------------------
+            //TODO: remove!! This is just debugger
+            String listString = "";
+            for (int i = 0; i < PREFIXs_list.size(); i++) {
+                for (Prefix s : PREFIXs_list.get("f")) {
+                    listString += s.id + "\t" + s.suffix + "\t" + s.str + "\t" + s.edge_type + "\t" + s.oval_size + "\t" + "\t";
+                }
+            }
+            System.out.println("f_PREFIXs_list: " + listString.toString());
+            //--------------------------------------------
+
             // \\\\\\\\\\\\\\\\\\\\\\\\\\ r_overlap
             int r_choices = o_rlist.size();
             if (r_choices > 0) {
@@ -368,19 +351,23 @@ public class TransitiveReduction extends Configured implements Tool {
 
                     String oval_seq_tmp = Node.dna2str(o_rlist.get(i).str);
                     String oval_seq;
+
+                    //-------------------------------------------------------------------------
+                    //TODO: remove?
                     if (oval_dir.equals("r")) {
                         oval_seq = Node.rc(oval_seq_tmp);
                     } else {
                         oval_seq = oval_seq_tmp;
                     }
+                    //-------------------------------------------------------------------------
 
+                    //-------------------------------------------------------------------------
+                    //TODO: remove!
                     // \\ Self contained filter
                     if (oval_size == oval_seq.length() && oval_size == node.str().length()) {
-                        //\\//:
-                        //reporter.incrCounter("Brush", "contained_edge", 1);
                         context.getCounter("Brush", "contained_edge").increment(1);
                     }
-
+                    /*
                     // \\\\\\\\\\\ Maximal Overlap filter
                     List<String> stored_IDs = IDs_rlist.get(oval_type);
                     boolean has_large_overlap = false;
@@ -388,14 +375,18 @@ public class TransitiveReduction extends Configured implements Tool {
                         has_large_overlap = true;
                     }
                     if (has_large_overlap) {
-                        node.addRemovalEdge(oval_id, Node.flip_link(oval_type), node.getNodeId(), oval_size);
+                        //node.addRemovalEdge(oval_id, Node.flip_link(oval_type), node.getNodeId(), oval_size);
+                        node.addRemovalEdge(oval_id, oval_type, node.getNodeId(), oval_size);
                         continue;
                     }
+                    */
+                    //-------------------------------------------------------------------------
 
                     // \\\\\\\\\\\ Transitive Reduction filter
                     List<Prefix> stored_PREFIXs = PREFIXs_list.get("r");
                     String prefix = oval_seq.substring(oval_size);
                     boolean has_trans_edge = false;
+
                     for (int j = 0; stored_PREFIXs != null && j < stored_PREFIXs.size(); j++) {
                         if (stored_PREFIXs.get(j).oval_size == oval_size
                                 && stored_PREFIXs.get(j).str.length() == oval_seq.length()) {
@@ -403,8 +394,6 @@ public class TransitiveReduction extends Configured implements Tool {
                         }
                         if (ERRORRATE <= 0) {
                             if (prefix.startsWith(stored_PREFIXs.get(j).suffix)) {
-
-                                //\\//:
                                 context.getCounter("Brush", "trans_edge").increment(1);
                                 has_trans_edge = true;
                                 node.addRemovalEdge(oval_id, Node.flip_link(oval_type), node.getNodeId(), oval_size);
@@ -425,6 +414,18 @@ public class TransitiveReduction extends Configured implements Tool {
                         tmp_PREFIXs.add(new Prefix(oval_id, oval_type, oval_seq, oval_size));
                         PREFIXs_list.put("r", tmp_PREFIXs);
                     }
+
+                    //--------------------------------------------
+                    //TODO: remove!! This is just debugger
+                    String r_listString = "";
+                    for (int k = 0; k < PREFIXs_list.size(); k++) {
+                        for (Prefix s : PREFIXs_list.get("r")) {
+                            r_listString += s.id + "\t" + s.suffix + "\t" + s.str + "\t" + s.edge_type + "\t" + s.oval_size + "\t" + "\t";
+                        }
+                    }
+                    System.out.println("r_PREFIXs_list: " + r_listString);
+                    //--------------------------------------------
+
                     if (edges_list.containsKey(oval_type)) {
                         edges_list.get(oval_type).add(edge_content);
                         IDs_rlist.get(oval_type).add(oval_id);
@@ -437,6 +438,9 @@ public class TransitiveReduction extends Configured implements Tool {
                         tmp_IDs.add(oval_id);
                         IDs_rlist.put(oval_type, tmp_IDs);
                     }
+
+                    System.out.println("IDs_rlist: " + IDs_rlist.toString() + " edges_list: " +  edges_list.toString());
+
                 }
             }
 
@@ -449,33 +453,30 @@ public class TransitiveReduction extends Configured implements Tool {
                 }
             }
 
-            //\\//:
             context.write(new Text(node.getNodeId()), new Text(node.toNodeMsg()));
         }
     }
 
     //\\//:
     //public RunningJob run(String inputPath, String outputPath) throws Exception
-    public int run(String inputPath, String outputPath) throws Exception
-    {
+    public int run(String inputPath, String outputPath, String ERRORRATE, String InsertSize ) throws Exception {
         sLogger.info("Tool name: TransitiveReduction");
         sLogger.info(" - input: " + inputPath);
         sLogger.info(" - output: " + outputPath);
+        sLogger.info(" - ERRORRATE: " + ERRORRATE);
+        sLogger.info(" - InsertSize: " + InsertSize);
 
         //\\//:
         //JobConf conf = new JobConf(TransitiveReduction.class);
         Configuration conf = new Configuration();
 
-        //\\//:
-        //BrushConfig.initializeConfiguration(conf);
-        //\\//: Please look TODO note bellow
-        //TODO: K was comming from configuration file???
-        //BrushConfig.K = 21;
-        int K = 21;
+        //Strore Kmer value to use it in mapreduce
+        conf.set("err_rate", ERRORRATE);
+        conf.set("InsertSize", InsertSize);
 
         //\\//:
         // Create job:
-        Job job = Job.getInstance(conf, "TransitiveReduction " + inputPath + " "  + K);
+        Job job = Job.getInstance(conf, "TransitiveReduction " + inputPath );
         job.setJarByClass(TransitiveReduction.class);
 
         // Setup input and output paths
@@ -510,8 +511,10 @@ public class TransitiveReduction extends Configured implements Tool {
     public int run(String[] args) throws Exception {
         String inputPath =  args[0];
         String outputPath = args[1];
+        String ERRORRATE = args[2];
+        String InsertSize  = args[3];
 
-        run(inputPath, outputPath);
+        run(inputPath, outputPath, ERRORRATE, InsertSize);
 
         return 0;
     }

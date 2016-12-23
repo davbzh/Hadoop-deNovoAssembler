@@ -1,0 +1,42 @@
+cat  testHPV.fatq | paste - - - - | grep ' /1 ' | tr '\t' '\n' > forward-test.fastq
+cat  testHPV.fatq | paste - - - - | grep ' /2 ' | tr '\t' '\n' > reverse-test.fastq
+./BWA_NR.sh /media/StorageOne/HTS/Projects/simNGS/BWA-test /media/StorageOne/HTS/Projects/simNGS/hpv.fa /media/StorageOne/HTS/Projects/simNGS/forward-test.fastq /media/StorageOne/HTS/Projects/simNGS/reverse-test.fastq
+
+#########################
+       reada   GTTAACTACCATCATTCATTATTCTAGTTACAACAA                           AGCCTATAAAATACACAGGTAAGACTCTGCACAGGA
+                                                                              TGTGCAGAGTCTTACCTGTGTATTTTATAGGCTTAC
+       readb             ATCATTCATTATTCTAGTTACAACAAGAACCTAGGA                           ATACACAGGTAAGACTCTGCACAGGACCAGATGGCG
+                                                                                        CGCCATCTGGTCCTGTGCAGAGTCTTACCTGTGTAT
+       readc                           TAGTTACAACAAGAACCTAGGAGTTATATGCCAGAA                           CTCTGCACAGGACCAGATGGCGACACCAATCCGGAC
+                                                                                                      GTCCGGATTGGTGTCGCCATCTGGTCCTGTGCAGAG
+       readd                                         ACCTAGGAGTTATATGCCAGAAGTAAGCCTATAAAA                           AGATGGCGACACCAATCCGGACCGTCAGACAGCTTT
+                                                                                                                    AAAGCTGTCTGACGGTCCGGATTGGTGTCGCCATCT
+ TATATATATATATAGTTAACTACCATCATTCATTAT                           ATATGCCAGAAGTAAGCCTATAAAATACACAGGTAA
+                                                                TTACCTGTGTATTTTATAGGCTTACTTCTGGCATAT
+       -----   GTTAACTACCATCATTCATTATTCTAGTTACAACAAGAACCTAGGAGTTATATGCCAGAAGTAAGCCTATAAAATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCGGACCGTCAGACAGCTTT
+
+
+hadoop fs -rm -r /HPV_fasta
+hadoop fs -mkdir /HPV_fasta
+hadoop fs -copyFromLocal HPV1.fastq /HPV_fasta
+
+hadoop jar Hadoop-deNovoAssembler.jar -i /HPV_fasta
+hadoop fs -cat /test_out1/part-r-00000
+hadoop fs -cat /test_out2/part-r-00000
+hadoop fs -cat /test_out3/part-r-00000
+hadoop fs -cat /test_out4/part-r-00000
+
+##???????????????
+hadoop jar GenReverseEdge.jar /test_out-... /test_out-... > GenReverseEdge.log
+hadoop fs -cat /test_out4/part-r-00000
+
+hadoop jar CutChimericLinks.jar /test_out-... /test_out-... > CutChimericLinks.log
+hadoop fs -cat /test_out5/part-r-00000
+
+hadoop jar EdgeRemoval.jar /test_out-... /test_out-... > EdgeRemoval.log
+hadoop fs -cat /test_out6/part-r-00000
+
+##???????????????
+
+hadoop jar TransitiveReduction.jar /test_out3 /test_out4 > TransitiveReduction.log
+
