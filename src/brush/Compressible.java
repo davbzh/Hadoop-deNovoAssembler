@@ -101,8 +101,18 @@ public class Compressible extends Configured implements Tool {
                 TailInfo next = node.gettail(adj);
 
                 if (next != null) {
+
+                    //TODO: Check this on the test file
+                    System.out.println("Compress?? key: " + key.toString() + " next.id: " + next.id +
+                            " if(next.dir: " + next.dir + ").equals(\"f\") && r_unique: " + r_unique.toString() +
+                            ".contains("+next.id+") or " + "next.dir + " + next.dir + ".equals(\"r\") &&  f_unique: " +
+                            f_unique.toString() + ".contains("+next.id+")");
+
                     if ((next.dir.equals("f") && r_unique.contains(next.id))
                             || (next.dir.equals("r") && f_unique.contains(next.id))) {
+
+                        System.out.println(" Bingo!!! can CanCompress... ");
+
                         // for path compress
                         if (node.getBlackEdges() == null) {
                             node.setCanCompress(adj, true);

@@ -1,8 +1,14 @@
-package brush;
-
 /**
- * Created by davbzh on 2016-12-16.
+    MatchPrefix.java
+    2012 Ⓒ CloudBrush, developed by Chien-Chih Chen (rocky@iis.sinica.edu.tw),
+    released under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+    at: https://github.com/ice91/CloudBrush
+*/
+/**
+ * Modified by davbzh on 2016-12-16.
  */
+
+package brush;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -77,12 +83,27 @@ public class MatchPrefix extends Configured implements Tool {
                 String prefix_r = Node.str2dna(Node.rc(prefix_tmp));
 
                 //emit to reducers
-                context.write(new Text(prefix), new Text(node.getNodeId() + "\t" + "ff1" + "\t" + node.toNodeMsg()));
-                context.write(new Text(prefix_r), new Text(node.getNodeId() + "\t" + "fr1" + "\t" + node.toNodeMsg()));
+                context.write(new Text(prefix), new Text(node.getNodeId() + "\t" + "ff1" + "\t" + node.toNodeMsg() + "\t"  + read_f.length()));
+                context.write(new Text(prefix_r), new Text(node.getNodeId() + "\t" + "fr1" + "\t" + node.toNodeMsg() + "\t"  + read_f.length()));
 
-                // slide the rest of the K-mer windows (suffixes) for each read in forward direction
                 int end_f = read_f.length() - K;
 
+                //Extract end of prefix of 1 (/1) read
+                //Note that we will emit this as SUFFIX
+                String end_prefix_tmp = read_f.substring(end_f);
+                String end_prefix = Node.str2dna(Node.rc(end_prefix_tmp));
+                String end_prefix_r = Node.str2dna(end_prefix_tmp);
+                //emit to mapper
+                context.write(new Text(end_prefix), new Text(node.getNodeId() + "\t" + "ff" + "\t" +
+                        Node.SUFFIXMSG + "\t" + read_f.length() + "\t" + node.cov() + "\t" +
+                        (read_f.length() + K)));
+                context.write(new Text(end_prefix_r), new Text(node.getNodeId() + "\t" + "fr" + "\t" +
+                        Node.SUFFIXMSG + "\t" + read_f.length() + "\t" + node.cov() + "\t" +
+                        (read_f.length() + K)));
+
+                System.out.println(" end_prefix: " + end_prefix_tmp + " Overlap_start: " + read_f.length());
+
+                // slide the rest of the K-mer windows (suffixes) for each read in forward direction
                 for (int i = 1; i < end_f; i++) {
                     //extract k-mer on f (/1) read
                     String f_window_tmp = read_f.substring(i, i + K);
@@ -92,6 +113,8 @@ public class MatchPrefix extends Configured implements Tool {
                     //extract overlap start position
                     //int overlap_start_position_f = K + i;
                     int overlap_start_position_f = read_f.length() - i;
+
+                    System.out.println("f_window_tmp: " + f_window_tmp + " overlap_start_position_f: " + overlap_start_position_f);
 
                     //emit to mapper
                     context.write(new Text(f_window), new Text(node.getNodeId() + "\t" + "ff" + "\t" +
@@ -111,6 +134,8 @@ public class MatchPrefix extends Configured implements Tool {
                     int overlap_start_position_r = (read_f.length() + pair_gap + read_r.length()) - ((read_f.length() +
                             pair_gap + read_r.length()) - K - i);
 
+                    System.out.println("r_window_tmp: " + r_window_tmp + " overlap_start_position_r: " + overlap_start_position_r);
+
                     //emit to mapper
                     context.write(new Text(r_window_r), new Text(node.getNodeId() + "\t" + "rr" +
                             "\t" + Node.SUFFIXMSG + "\t" + overlap_start_position_r + "\t" + node.cov() +
@@ -120,14 +145,30 @@ public class MatchPrefix extends Configured implements Tool {
                             (total_node_length + K)));
                 }
 
+                //Extract start of prefix of r (/2) read
+                //Note that we will emit this as SUFFIX
+                String start_prefix_rc_tmp = read_r.substring(0, K);
+                String start_prefix_rc = Node.str2dna(start_prefix_rc_tmp);
+                String start_prefix_rf = Node.str2dna(Node.rc(start_prefix_rc_tmp));
+                int start_overlap_start_position_r = (read_f.length() + pair_gap + read_r.length()) - ((read_f.length() +
+                        pair_gap + read_r.length()) - K - 0);                //emit to mapper
+                context.write(new Text(start_prefix_rc), new Text(node.getNodeId() + "\t" + "rr" +
+                        "\t" + Node.SUFFIXMSG + "\t" + start_overlap_start_position_r + "\t" + node.cov() +
+                        "\t" + (total_node_length + K)));
+                context.write(new Text(start_prefix_rf), new Text(node.getNodeId() + "\t" + "rf" + "\t" +
+                        Node.SUFFIXMSG + "\t" + start_overlap_start_position_r + "\t" + node.cov() + "\t" +
+                        (total_node_length + K)));
+
+                System.out.println(" start_prefix_rc: " + start_prefix_rc_tmp + " Overlap_start: " + start_overlap_start_position_r);
+
                 //end with prefix of r (/2) read
                 String prefix_rc_tmp = read_r.substring(read_r.length() - K);
                 String prefix_rc = Node.str2dna(Node.rc(prefix_rc_tmp));
                 String prefix_rf = Node.str2dna(prefix_rc_tmp);
 
                 //emit to mapper
-                context.write(new Text(prefix_rc), new Text(node.getNodeId() + "\t" + "rr2" + "\t" + node.toNodeMsg()));
-                context.write(new Text(prefix_rf), new Text(node.getNodeId() + "\t" + "rf2" + "\t" + node.toNodeMsg()));
+                context.write(new Text(prefix_rc), new Text(node.getNodeId() + "\t" + "rr2" + "\t" + node.toNodeMsg() + "\t"  + read_r.length()));
+                context.write(new Text(prefix_rf), new Text(node.getNodeId() + "\t" + "rf2" + "\t" + node.toNodeMsg() + "\t"  + read_r.length()));
             }
         }
     }
@@ -174,7 +215,6 @@ public class MatchPrefix extends Configured implements Tool {
             List<EdgeInfo> elist;
 
             int prefix_sum = 0;
-            int belong_read = 0;
             int kmer_count = 0;
 
             for (Text msg : iter) {
@@ -183,12 +223,9 @@ public class MatchPrefix extends Configured implements Tool {
                 if (vals[2].equals(Node.NODEMSG)) {
                     Node node = new Node(vals[0]);
                     node.parseNodeMsg(vals, 2);
-                    String window = Node.dna2str(prefix.toString());
                     String edge_type = vals[1].substring(0, 2);
                     String rev_idx = vals[1].substring(2, 3);
-
                     if (rev_idx.equals("1")) {
-
                         if (idx_nodes.containsKey(prefix.toString())) {
                             nodes = idx_nodes.get(prefix.toString());
                             nodes.put(node.getNodeId() + "|" + edge_type, node);
@@ -213,7 +250,7 @@ public class MatchPrefix extends Configured implements Tool {
                         System.out.println("	    ERROR: Unknow NODE!!!");
                     }
 
-                    EdgeInfo ei = new EdgeInfo(vals[0], vals[1].substring(0, 2), node.len(), node.cov());
+                    EdgeInfo ei = new EdgeInfo(vals[0], vals[1].substring(0, 2), Integer.parseInt(vals[7]), node.cov());
                     if (idx_elist.containsKey(prefix.toString())) {
                         elist = idx_elist.get(prefix.toString());
                         elist.add(ei);
@@ -225,26 +262,31 @@ public class MatchPrefix extends Configured implements Tool {
                     }
 
                 } else if (vals[2].equals(Node.SUFFIXMSG)) {
-
                     tmp_cov = Float.parseFloat(vals[4]);
-
                     EdgeInfo ei = new EdgeInfo(vals[0], vals[1], Integer.parseInt(vals[3]), Float.parseFloat(vals[4]));
                     if (idx_elist.containsKey(prefix.toString())) {
                         elist = idx_elist.get(prefix.toString());
                         elist.add(ei);
                         idx_elist.put(prefix.toString(), elist);
+
+                        System.out.println( "prefixincoming kmer " +  Node.dna2str(prefix.toString()) + "to idx_elist: " + idx_elist.toString());
+
                     } else {
                         elist = new ArrayList<EdgeInfo>();
                         elist.add(ei);
                         idx_elist.put(prefix.toString(), elist);
-                    }
 
+                        System.out.println( "prefixincoming kmer " +  Node.dna2str(prefix.toString()) + "to idx_elist: " + idx_elist.toString());
+
+                    }
                 } else {
                     throw new IOException("Unknown msgtype: " + msg);
                 }
                 kmer_count = kmer_count + (int) tmp_cov;
                 prefix_sum = prefix_sum + (int) tmp_cov;
             }
+
+            System.out.println("idx_elist_after_loop: " + idx_elist.toString());
 
             for (String idx : idx_nodes.keySet()) {
                 elist = idx_elist.get(idx);
@@ -264,6 +306,8 @@ public class MatchPrefix extends Configured implements Tool {
                     context.getCounter("K-mer frequency filter", "nodecount").increment(1);
                 }
 
+                System.out.println("edges_list: " + edges_list.toString());
+
                 //\\//: loop through node ids
                 for (String nodeid_dir : nodes.keySet()) {
                     String dir = nodeid_dir.substring(nodeid_dir.indexOf("|") + 1); // @see https://docs.oracle.com/javase/7/docs/api/java/lang/String.html.
@@ -280,12 +324,22 @@ public class MatchPrefix extends Configured implements Tool {
                             String key = dir;
                             for (int i = 0; i < edges.size(); i++) {
                                 String edge_id = edges.get(i).substring(0, edges.get(i).indexOf("!"));
-                                int overlap_start_position = Integer.parseInt(edges.get(i).substring(edges.get(i).indexOf("!") + 1, edges.get(i).indexOf("|")));
-                                float cov = Float.parseFloat(edges.get(i).substring(edges.get(i).indexOf("|") + 1));
+                                int overlap_start_position = Integer.parseInt(edges.get(i).substring(edges.get(i).indexOf("!")
+                                        + 1, edges.get(i).indexOf("|")));
+                                //float cov = Float.parseFloat(edges.get(i).substring(edges.get(i).indexOf("|") + 1));
+
+                                System.out.println( "edge_id: " +  edge_id + " overlap_start_position: "
+                                        + overlap_start_position);
 
                                 if (node.getNodeId().equals(edge_id)) {
+
+                                    System.out.println( "NodeId: "+node.getNodeId()+" == edge_id " + edge_id);
+
                                     context.getCounter("edge equals to", "nodecount").increment(1);
                                 } else {
+
+                                    System.out.println( "NodeId: "+node.getNodeId()+" != edge_id " + edge_id);
+
                                     context.getCounter("edge not equals to", "nodecount").increment(1);
                                     if (!node.hasEdge(key, edge_id, overlap_start_position)) { //\\//: and node doesn't have the specific edge
                                         context.getCounter("doensn't have edge", "nodecount").increment(1);

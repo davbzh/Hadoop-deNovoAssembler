@@ -4,6 +4,15 @@ cat  testHPV.fatq | paste - - - - | grep ' /2 ' | tr '\t' '\n' > reverse-test.fa
 
 #########################
        reada   GTTAACTACCATCATTCATTATTCTAGTTACAACAA                           AGCCTATAAAATACACAGGTAAGACTCTGCACAGGA
+       readb             ATCATTCATTATTCTAGTTACAACAAGAACCTAGGA                           ATACACAGGTAAGACTCTGCACAGGACCAGATGGCG
+       readc                           TAGTTACAACAAGAACCTAGGAGTTATATGCCAGAA                           CTCTGCACAGGACCAGATGGCGACACCAATCCGGAC
+       readd                                         ACCTAGGAGTTATATGCCAGAAGTAAGCCTATAAAA                           AGATGGCGACACCAATCCGGACCGTCAGACAGCTTT
+ TATATATATATATAGTTAACTACCATCATTCATTAT                           ATATGCCAGAAGTAAGCCTATAAAATACACAGGTAA
+readf                 ACCATTCATTATTCTAGTTACAACAAGAACCTAGGAGTTATATGCCAG                 AATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCGGA
+       -----   GTTAACTACCATCATTCATTATTCTAGTTACAACAAGAACCTAGGAGTTATATGCCAGAAGTAAGCCTATAAAATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCGGACCGTCAGACAGCTTT
+
+#########################
+       reada   GTTAACTACCATCATTCATTATTCTAGTTACAACAA                           AGCCTATAAAATACACAGGTAAGACTCTGCACAGGA
                                                                               TGTGCAGAGTCTTACCTGTGTATTTTATAGGCTTAC
        readb             ATCATTCATTATTCTAGTTACAACAAGAACCTAGGA                           ATACACAGGTAAGACTCTGCACAGGACCAGATGGCG
                                                                                         CGCCATCTGGTCCTGTGCAGAGTCTTACCTGTGTAT
@@ -15,7 +24,6 @@ cat  testHPV.fatq | paste - - - - | grep ' /2 ' | tr '\t' '\n' > reverse-test.fa
                                                                 TTACCTGTGTATTTTATAGGCTTACTTCTGGCATAT
        -----   GTTAACTACCATCATTCATTATTCTAGTTACAACAAGAACCTAGGAGTTATATGCCAGAAGTAAGCCTATAAAATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCGGACCGTCAGACAGCTTT
 
-
 hadoop fs -rm -r /HPV_fasta
 hadoop fs -mkdir /HPV_fasta
 hadoop fs -copyFromLocal HPV1.fastq /HPV_fasta
@@ -25,6 +33,8 @@ hadoop fs -cat /test_out1/part-r-00000
 hadoop fs -cat /test_out2/part-r-00000
 hadoop fs -cat /test_out3/part-r-00000
 hadoop fs -cat /test_out4/part-r-00000
+hadoop fs -cat /test_out5/part-r-00000
+hadoop fs -cat /test_out6/part-r-00000
 
 ##???????????????
 hadoop jar GenReverseEdge.jar /test_out-... /test_out-... > GenReverseEdge.log

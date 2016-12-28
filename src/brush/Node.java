@@ -21,7 +21,6 @@ import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.util.ToolRunner;
-import org.jetbrains.annotations.Nullable;
 
 public class Node {
     public static final String NODEMSG = "N";

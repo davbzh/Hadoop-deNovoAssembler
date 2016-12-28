@@ -273,7 +273,12 @@ public class TransitiveReduction extends Configured implements Tool {
                     //---------------------------------------------------------------------------------------
 
                     // \\\\\\\\\\\ Transitive Reduction filter
-                    //TODO: what is transitive edge?
+                    // Let X → Y → Z be such a path. The string corresponding to this path is a valid assembly of
+                    // the three reads which is identical to the string corresponding to the path X → Z. In this case,
+                    // we say that the edge X ↔ Z is transitive.
+
+                    //TODO: Check this on the test file
+
                     List<Prefix> stored_PREFIXs = PREFIXs_list.get("f");
                     String prefix = oval_seq.substring(oval_size);
 

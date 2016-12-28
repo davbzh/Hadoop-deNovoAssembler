@@ -48,6 +48,14 @@ public class Cli {
                 TransitiveReduction tr = new TransitiveReduction();
                 tr.run("/test_out3","/test_out4", "0.00f", "99");
 
+                //EdgeRemoval
+                EdgeRemoval er = new EdgeRemoval();
+                er.run("/test_out4","/test_out5");
+
+                //Compressible
+                Compressible cmp = new Compressible();
+                cmp.run("/test_out5","/test_out6");
+
             } else {
                 help();
             }
