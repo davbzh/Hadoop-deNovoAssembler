@@ -90,6 +90,7 @@ public class MatchPrefix extends Configured implements Tool {
 
                 //Extract end of prefix of 1 (/1) read
                 //Note that we will emit this as SUFFIX
+                //TODO: Not sure if it needs to be emitted as PREFIX
                 String end_prefix_tmp = read_f.substring(end_f);
                 String end_prefix = Node.str2dna(Node.rc(end_prefix_tmp));
                 String end_prefix_r = Node.str2dna(end_prefix_tmp);
@@ -147,6 +148,7 @@ public class MatchPrefix extends Configured implements Tool {
 
                 //Extract start of prefix of r (/2) read
                 //Note that we will emit this as SUFFIX
+                //TODO: Not sure if it needs to be emitted as PREFIX
                 String start_prefix_rc_tmp = read_r.substring(0, K);
                 String start_prefix_rc = Node.str2dna(start_prefix_rc_tmp);
                 String start_prefix_rf = Node.str2dna(Node.rc(start_prefix_rc_tmp));

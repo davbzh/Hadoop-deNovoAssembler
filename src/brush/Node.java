@@ -2134,7 +2134,7 @@ public class Node {
 		double random_n = rand * 10000000;
 		System.out.println(random_n);
 		*/
-        String f_dna = "ATATGCCAGAAGTAAGCCTATAAAATACACAGGTAA";
+        String f_dna = "AATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCG";
         String r_dna = Node.rc(f_dna);
         System.out.println(r_dna);
     }

@@ -186,16 +186,25 @@ public class VerifyOverlap extends Configured implements Tool {
                             }
                         }
                         //now check it if there are ff or rr edges with identical positions on fr or rf edges, and remove the latter
-                        if ( (oval_type.equals("ff") || oval_type.equals("rr"))) {
-                            if ( edges_list.containsKey("fr") && edges_list.get("fr").equals(tmp_edges) ) {
+                        if ( edges_list.containsKey("ff") && edges_list.containsKey("fr") ) {
+
+                            System.out.println("tmp_edges: " + tmp_edges + " edges_list: " + edges_list.toString());
+
+                            if ( edges_list.get("fr").equals(tmp_edges) ||
+                                    edges_list.get("fr").equals(edges_list.get("ff"))) {
                                 edges_list.remove("fr");
                                 IDs_list.remove("fr");
                             }
-                            if ( edges_list.containsKey("rf") && edges_list.get("rf").equals(tmp_edges)  ){
+
+                        } else if (edges_list.containsKey("rr") && edges_list.containsKey("rf")){
+                            if (edges_list.get("rf").equals(tmp_edges)  ||
+                                    edges_list.get("rf").equals(edges_list.get("rr"))){
                                 edges_list.remove("rf");
                                 IDs_list.remove("rf");
                             }
+
                         }
+
                     }
                 }
             }
