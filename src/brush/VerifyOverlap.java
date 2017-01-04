@@ -1,8 +1,14 @@
-package brush;
-
 /**
- * Created by davbzh on 2016-12-16.
+ VerifyOverlap.java
+ 2012 Ⓒ CloudBrush, developed by Chien-Chih Chen (rocky@iis.sinica.edu.tw),
+ released under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+ at: https://github.com/ice91/CloudBrush
  */
+/**
+ * Modified by davbzh on 2016-12-16.
+ */
+
+package brush;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -30,6 +36,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 
+import brush.Node.*;
 
 public class VerifyOverlap extends Configured implements Tool {
     private static final Logger sLogger = Logger.getLogger(VerifyOverlap.class);
@@ -67,49 +74,10 @@ public class VerifyOverlap extends Configured implements Tool {
     ///////////////////////////////////////////////////////////////////////////
     // VerifyOverlapReducer
     public static class VerifyOverlapReducer extends Reducer<Text, Text, Text, Text> {
-
-        public class OverlapInfo {
-            public String id;
-            public String str;
-            public String edge_type;
-            public int overlap_size;
-
-            public OverlapInfo(String[] vals, int offset) throws IOException {
-
-                if (!vals[offset].equals(Node.OVALMSG)) {
-                    throw new IOException("Unknown message type");
-                }
-                id = vals[offset + 1];
-                str = vals[offset + 2];
-                edge_type = vals[offset + 3];
-                overlap_size = Integer.parseInt(vals[offset + 4]);
-            }
-            public String toString() {
-                return edge_type + " " + id + " " + overlap_size + " " + str;
-            }
-        }
-
-        // \\// @see http://stackoverflow.com/questions/8327514/comparison-method-violates-its-general-contract/8327575#8327575
-        class OvelapSizeComparator implements Comparator {
-            public int compare(Object element1, Object element2) {
-                OverlapInfo obj1 = (OverlapInfo) element1;
-                OverlapInfo obj2 = (OverlapInfo) element2;
-                if ((int) (obj1.overlap_size - obj2.overlap_size) > 0) {
-                    return -1;
-                } else if ((int) (obj1.overlap_size - obj2.overlap_size) < 0) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-
-        // \\//:
         public void reduce(Text nodeid, Iterable<Text> iter, Context context) throws IOException, InterruptedException {
             Node node = new Node(nodeid.toString());
             List<OverlapInfo> olist = new ArrayList<OverlapInfo>();
             int sawnode = 0;
-            // \\//:
             for (Text msg : iter) {
                 String[] vals = msg.toString().split("\t");
                 if (vals[0].equals(Node.NODEMSG)) {
@@ -118,22 +86,12 @@ public class VerifyOverlap extends Configured implements Tool {
                     context.getCounter("NODEMSG", "nodecount").increment(1);
                 } else if (vals[0].equals(Node.OVALMSG)) {
                     OverlapInfo oi = new OverlapInfo(vals, 0);
-                    System.out.println("oi.str: " + oi.str);
                     olist.add(oi);
                     context.getCounter("OVALMSG", "nodecount").increment(1);
                 } else {
                     throw new IOException("Unknown msgtype: " + msg);
                 }
             }
-
-            //--------------------------------------------------------------------------------------------------------------------
-            // \\ two brush
-            if (sawnode != 1 && sawnode != 2) {
-                // throw new IOException("ERROR: Didn't see exactly 1 && 2 nodemsg (" + sawnode + ") for " + nodeid.toString());
-                System.out.println("ERROR: Didn't see exactly 1 && 2 nodemsg (" + sawnode + ") for " + nodeid.toString());
-            }
-            //--------------------------------------------------------------------------------------------------------------------
-
             //\\//: store confirmed edges
             Map<String, List<String>> edges_list = new HashMap<String, List<String>>();
             Map<String, List<String>> IDs_list = new HashMap<String, List<String>>();
@@ -146,65 +104,22 @@ public class VerifyOverlap extends Configured implements Tool {
                     String oval_id = olist.get(i).id;
                     String oval_type = olist.get(i).edge_type;
                     int oval_size = olist.get(i).overlap_size;
-
                     //String[] reads = olist.get(i).str.split("!");
                     //String read_f = Node.dna2str(reads[0]);
                     //String read_r = Node.dna2str(reads[1]);
-
-                    // \\\\\\\\\\\\\ Store confirmed edge
+                    //Store confirmed edge
                     String edge_content = oval_id + "!" + oval_size;
                     if (edges_list.containsKey(oval_type)) {
                         edges_list.get(oval_type).add(edge_content);
                         IDs_list.get(oval_type).add(oval_id);
-
-                        System.out.println("ZZZ=>edges_list: " + edges_list.toString());
-
                     } else {
                         List<String> tmp_edges = null;
                         tmp_edges = new ArrayList<String>();
                         tmp_edges.add(edge_content);
-
-                        System.out.println( "*****: " + tmp_edges + " " + edges_list.containsValue(tmp_edges) );
-
                         List<String> tmp_IDs = new ArrayList<String>();
-                        //Add only ff or rr edges if there are identical fr or rf edges
-                        if ( (oval_type.equals("ff") || oval_type.equals("rr"))) {
-                            edges_list.put(oval_type, tmp_edges);
-                            tmp_IDs.add(olist.get(i).id);
-                            IDs_list.put(oval_type, tmp_IDs);
-                        } else if ( (oval_type.equals("rf") || oval_type.equals("fr"))) {
-                            if ( edges_list.containsKey("ff") && edges_list.get("ff").equals(tmp_edges) ) {
-                                System.out.println("ff_tmp_edges: " + tmp_edges );
-                            }
-                            else  if ( edges_list.containsKey("rr") && edges_list.get("rr").equals(tmp_edges) ){
-                                System.out.println("rr_tmp_edges: " + tmp_edges );
-                            }
-                            else {
-                                edges_list.put(oval_type, tmp_edges);
-                                tmp_IDs.add(olist.get(i).id);
-                                IDs_list.put(oval_type, tmp_IDs);
-                            }
-                        }
-                        //now check it if there are ff or rr edges with identical positions on fr or rf edges, and remove the latter
-                        if ( edges_list.containsKey("ff") && edges_list.containsKey("fr") ) {
-
-                            System.out.println("tmp_edges: " + tmp_edges + " edges_list: " + edges_list.toString());
-
-                            if ( edges_list.get("fr").equals(tmp_edges) ||
-                                    edges_list.get("fr").equals(edges_list.get("ff"))) {
-                                edges_list.remove("fr");
-                                IDs_list.remove("fr");
-                            }
-
-                        } else if (edges_list.containsKey("rr") && edges_list.containsKey("rf")){
-                            if (edges_list.get("rf").equals(tmp_edges)  ||
-                                    edges_list.get("rf").equals(edges_list.get("rr"))){
-                                edges_list.remove("rf");
-                                IDs_list.remove("rf");
-                            }
-
-                        }
-
+                        edges_list.put(oval_type, tmp_edges);
+                        tmp_IDs.add(olist.get(i).id);
+                        IDs_list.put(oval_type, tmp_IDs);
                     }
                 }
             }
@@ -219,7 +134,7 @@ public class VerifyOverlap extends Configured implements Tool {
             context.write(new Text(node.getNodeId()), new Text(node.toNodeMsg()));
         }
     }
-    // \\//:
+
     public int run(String inputPath, String outputPath) throws Exception {
         sLogger.info("Tool name: VerifyOverlap");
         sLogger.info(" - input: " + inputPath);

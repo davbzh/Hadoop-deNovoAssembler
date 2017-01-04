@@ -113,7 +113,11 @@ public class TransitiveReduction extends Configured implements Tool {
                 read_r = reads[1];
                 if (edge_type.equals("ff")) {
                     str = read_f;
+                } else if (edge_type.equals("fe")) {
+                    str = read_f;
                 } else if (edge_type.equals("rr")) {
+                    str = read_r;
+                } else if (edge_type.equals("re")) {
                     str = read_r;
                 } else {
                     //TODO: I need to also check for fr and rf orientations
@@ -276,7 +280,6 @@ public class TransitiveReduction extends Configured implements Tool {
                     // Let X → Y → Z be such a path. The string corresponding to this path is a valid assembly of
                     // the three reads which is identical to the string corresponding to the path X → Z. In this case,
                     // we say that the edge X ↔ Z is transitive.
-
                     //TODO: Check this on the test file
 
                     List<Prefix> stored_PREFIXs = PREFIXs_list.get("f");
@@ -327,8 +330,6 @@ public class TransitiveReduction extends Configured implements Tool {
                 }
             }
 
-
-
             //--------------------------------------------
             //TODO: remove!! This is just debugger
             String listString = "";
@@ -337,6 +338,7 @@ public class TransitiveReduction extends Configured implements Tool {
                     listString += s.id + "\t" + s.suffix + "\t" + s.str + "\t" + s.edge_type + "\t" + s.oval_size + "\t" + "\t";
                 }
             }
+
             System.out.println("f_PREFIXs_list: " + listString.toString());
             //--------------------------------------------
 
@@ -345,7 +347,6 @@ public class TransitiveReduction extends Configured implements Tool {
             if (r_choices > 0) {
                 // Sort overlap strings in order of decreasing overlap size
                 Collections.sort(o_rlist, new OvelapSizeComparator_r());
-
                 // See if there are any pairwise compatible strings
                 for (int i = 0; i < r_choices; i++) {
                     String oval_id = o_rlist.get(i).id;
@@ -353,7 +354,6 @@ public class TransitiveReduction extends Configured implements Tool {
                     String oval_dir = oval_type.substring(1);
                     int oval_size = o_rlist.get(i).overlap_size;
                     String edge_content = oval_id + "!" + oval_size;
-
                     String oval_seq_tmp = Node.dna2str(o_rlist.get(i).str);
                     String oval_seq;
 

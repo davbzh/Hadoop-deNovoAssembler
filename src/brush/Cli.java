@@ -40,21 +40,25 @@ public class Cli {
                 MatchPrefix mp = new MatchPrefix();
                 mp.run("/test_out1","/test_out2", "21", "99");
 
+                //DuplicateEdgeRomoval
+                DuplicateEdgeRomoval dper = new DuplicateEdgeRomoval();
+                dper.run("/test_out2", "/test_out3");
+
                 //Verify and group edges
                 VerifyOverlap vo = new VerifyOverlap();
-                vo.run("/test_out2", "/test_out3");
+                vo.run("/test_out3", "/test_out4");
 
                 //TransitiveReduction
                 TransitiveReduction tr = new TransitiveReduction();
-                tr.run("/test_out3","/test_out4", "0.00f", "99");
+                tr.run("/test_out4","/test_out5", "0.00f", "99");
 
                 //EdgeRemoval
                 EdgeRemoval er = new EdgeRemoval();
-                er.run("/test_out4","/test_out5");
+                er.run("/test_out5","/test_out6");
 
                 //Compressible
                 Compressible cmp = new Compressible();
-                cmp.run("/test_out5","/test_out6");
+                cmp.run("/test_out6","/test_out7");
 
             } else {
                 help();

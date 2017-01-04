@@ -36,14 +36,11 @@ public class EdgeRemoval extends Configured implements Tool {
     private static final Logger sLogger = Logger.getLogger(EdgeRemoval.class);
 
     ///////////////////////////////////////////////////////////////////////////
-    // PopBubblesMapper
-
+    // EdgeRemovalMapper
     public static class EdgeRemovalMapper  extends Mapper<LongWritable, Text, Text, Text> {
-
         public void map(LongWritable lineid, Text nodetxt, Context context) throws IOException, InterruptedException {
             Node node = new Node();
             node.fromNodeMsg(nodetxt.toString());
-
             List<String> r_edges = node.getRemovalEdges();
             if (r_edges != null) {
                 for (String r_edge : r_edges) {
@@ -52,11 +49,9 @@ public class EdgeRemoval extends Configured implements Tool {
                     String dir = vals[1];
                     String dead = vals[2];
                     int oval = Integer.parseInt(vals[3]);
-
                     context.write(new Text(id), new Text(Node.KILLLINKMSG + "\t" + dir + "\t" + dead + "\t" + oval));
                     context.getCounter("Brush", "edgesremoved").increment(1);
                 }
-
                 node.clearRemovalEdge();
             }
             context.write(new Text(node.getNodeId()), new Text(node.toNodeMsg()));
@@ -71,12 +66,10 @@ public class EdgeRemoval extends Configured implements Tool {
             public String deaddir;
             public String deadid;
             public int oval_size;
-
             public RemoveLink(String[] vals, int offset) throws IOException {
                 if (!vals[offset].equals(Node.KILLLINKMSG)) {
                     throw new IOException("Unknown msg");
                 }
-
                 deaddir = vals[offset + 1];
                 deadid = vals[offset + 2];
                 oval_size = Integer.parseInt(vals[offset + 3]);
@@ -85,17 +78,12 @@ public class EdgeRemoval extends Configured implements Tool {
 
         public void reduce(Text nodeid, Iterable<Text> iter,  Context context) throws IOException, InterruptedException {
             Node node = new Node(nodeid.toString());
-
             int sawnode = 0;
-
             boolean killnode = false;
             float extracov = 0;
             List<RemoveLink> links = new ArrayList<RemoveLink>();
-
             for(Text msg : iter) {
-
                 String [] vals = msg.toString().split("\t"); //\\//: tokenize it
-
                 if (vals[0].equals(Node.NODEMSG)) {
                     node.parseNodeMsg(vals, 0);
                     sawnode++;
@@ -106,7 +94,6 @@ public class EdgeRemoval extends Configured implements Tool {
                     throw new IOException("Unknown msgtype: " + msg);
                 }
             }
-
             if (sawnode != 1) {
                 if (node.getEdges("ff") == null && node.getEdges("rr") == null && node.getEdges("fr") == null
                         && node.getEdges("rf") == null) {
@@ -116,19 +103,15 @@ public class EdgeRemoval extends Configured implements Tool {
                             "ERROR: Didn't see exactly 1 nodemsg (" + sawnode + ") for " + nodeid.toString());
                 }
             }
-
             if (links.size() > 0) {
                 for (RemoveLink link : links) {
-
                     if (node.hasEdge(link.deaddir, link.deadid, link.oval_size)) {
                         node.removelink(link.deadid, link.deaddir, link.oval_size);
                     }
-
                     context.getCounter("Brush", "linksremoved").increment(1);
                 }
 
             }
-
             context.write(nodeid, new Text(node.toNodeMsg()));
         }
     }
@@ -136,61 +119,47 @@ public class EdgeRemoval extends Configured implements Tool {
     ///////////////////////////////////////////////////////////////////////////
     // Run Tool
     public int run(String inputPath, String outputPath) throws Exception {
-
         sLogger.info("Tool name: EdgeRemoval");
         sLogger.info(" - input: " + inputPath);
         sLogger.info(" - output: " + outputPath);
-
         //\\//:
         Configuration conf = new Configuration();
-
         //\\//:
         // Create job:
         Job job = Job.getInstance(conf, "EdgeRemoval " + inputPath);
         job.setJarByClass(EdgeRemoval.class);
-
         // Setup input and output paths
         FileInputFormat.addInputPath(job, new Path(inputPath));
         FileOutputFormat.setOutputPath(job, new Path(outputPath));
-
         //\\//:
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
-
         //\\//:
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(Text.class);
         // conf.setBoolean("mapred.output.compress", true);
-
         //\\//:
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
-
         // Setup MapReduce job
         job.setMapperClass(EdgeRemovalMapper.class);
         job.setReducerClass(EdgeRemovalReducer.class);
-
         // delete the output directory if it exists already
         FileSystem.get(conf).delete(new Path(outputPath), true);
-
         //\\//:
         return job.waitForCompletion(true) ? 0 : 1;
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // Parse Arguments and run
-
     public int run(String[] args) throws Exception {
         String inputPath  = args[0];
         String outputPath = args[1];
-
         run(inputPath, outputPath);
         return 0;
     }
-
     ///////////////////////////////////////////////////////////////////////////
     // Main
-
     public static void main(String[] args) throws Exception {
         int res = ToolRunner.run(new Configuration(), new EdgeRemoval(), args);
         System.exit(res);

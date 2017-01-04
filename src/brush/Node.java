@@ -65,7 +65,9 @@ public class Node {
     };
 
     static String[] dnachars = { "A", "C", "G", "T" };
-    static String[] edgetypes = { "ff", "fr", "rf", "rr" };
+    //edge types ending with "i" depict invard edeges in pair end reads such as end prefix of read 1
+    //and start prefix of read2
+    static String[] edgetypes = { "ff", "fe", "fr", "ef", "rf", "er", "rr", "re" };
     static String[] dirs = { "f", "r" };
 
     static Map<String, String> str2dna_ = initializeSTR2DNA();
@@ -427,7 +429,8 @@ public class Node {
     }
 
     public List<String> getEdges(String et) throws IOException {
-        if (et.equals("ff") || et.equals("fr") || et.equals("rr") || et.equals("rf")) {
+        if (et.equals("ff") || et.equals("fr") || et.equals("rr") || et.equals("rf")
+                || et.equals("fe") || et.equals("ef") || et.equals("re") || et.equals("er")) {
             return fields.get(et);
         }
 
@@ -925,7 +928,6 @@ public class Node {
         if (fields.containsKey(REMOVEDGE)) {
             return fields.get(REMOVEDGE);
         }
-
         return null;
     }
 
@@ -2011,38 +2013,6 @@ public class Node {
         }
     }
 
-    // -------------------------------------------------------------------------------
-    public void tmp_parseNodeMsg(String[] items, int offset) throws IOException {
-        if (!items[offset].equals(NODEMSG)) {
-            throw new IOException("Unknown code: " + items[offset]);
-        }
-
-        List<String> l = null;
-
-        offset++;
-
-        while (offset < items.length) {
-            if (items[offset].charAt(0) == '*') {
-                String type = items[offset].substring(1);
-                // System.out.println("type: " + type);
-                l = fields.get(type);
-
-                if (l == null) {
-                    l = new ArrayList<String>();
-                    fields.put(type, l);
-                }
-            } else if (l != null) {
-                l.add(items[offset]);
-                // System.out.println("items[offset]: " + items[offset]);
-
-            }
-            System.out.println("list: " + l);
-
-            offset++;
-        }
-    }
-    // -------------------------------------------------------------------------------
-
     public void fromNodeMsg(String nodestr, Set<String> desired) {
         fields.clear();
 
@@ -2074,6 +2044,39 @@ public class Node {
         }
     }
 
+    public static class OverlapInfo {
+        public String id;
+        public String str;
+        public String edge_type;
+        public int overlap_size;
+        public OverlapInfo(String[] vals, int offset) throws IOException {
+            if (!vals[offset].equals(Node.OVALMSG)) {
+                throw new IOException("Unknown message type");
+            }
+            id = vals[offset + 1];
+            str = vals[offset + 2];
+            edge_type = vals[offset + 3];
+            overlap_size = Integer.parseInt(vals[offset + 4]);
+        }
+        public String toString() {
+            return edge_type + " " + id + " " + overlap_size + " " + str;
+        }
+    }
+
+    public static class OvelapSizeComparator implements Comparator {
+        public int compare(Object element1, Object element2) {
+            OverlapInfo obj1 = (OverlapInfo) element1;
+            OverlapInfo obj2 = (OverlapInfo) element2;
+            if ((int) (obj1.overlap_size - obj2.overlap_size) > 0) {
+                return -1;
+            } else if ((int) (obj1.overlap_size - obj2.overlap_size) < 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
     public static String flip_dir(String dir) throws IOException {
         if (dir.equals("f")) {
             return "r";
@@ -2090,13 +2093,19 @@ public class Node {
             return "rr";
         }
         if (link.equals("fr")) {
-            return "fr";
+            return "rf";
         }
         if (link.equals("rf")) {
-            return "rf";
+            return "fr";
         }
         if (link.equals("rr")) {
             return "ff";
+        }
+        if (link.equals("fe")) {
+            return "re";
+        }
+        if (link.equals("re")) {
+            return "fe";
         }
         throw new IOException("Unknown link type: " + link);
     }
