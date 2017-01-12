@@ -27,10 +27,6 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
-//\\//: why we import this?
-import brush.MatchPrefix;
-import brush.Stats;
-
 public class SetPairEndReads extends Configured implements Tool {
     //\\//:
     //TODO: Check what MatchPrefix.class is doing here

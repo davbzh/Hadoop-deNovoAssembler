@@ -1,8 +1,21 @@
-package brush;
+/**
+ Node.java
+ 2012 Ⓒ CloudBrush, developed by Chien-Chih Chen (rocky@iis.sinica.edu.tw),
+ released under Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+ at: https://github.com/ice91/CloudBrush
+
+ The file is derived from Contrail Project which is developed by Michael Schatz,
+ Jeremy Chambers, Avijit Gupta, Rushil Gupta, David Kelley, Jeremy Lewi,
+ Deepak Nettem, Dan Sommer, Mihai Pop, Schatz Lab and Cold Spring Harbor Laboratory,
+ and is released under Apache License 2.0 at:
+ http://sourceforge.net/apps/mediawiki/contrail-bio/
+ */
 
 /**
- * Created by davbzh on 2016-12-15.
+ * Modified by davbzh on 2016-12-15.
  */
+
+package brush;
 
 import java.io.*;
 import java.io.IOException;
@@ -67,7 +80,7 @@ public class Node {
     static String[] dnachars = { "A", "C", "G", "T" };
     //edge types ending with "i" depict invard edeges in pair end reads such as end prefix of read 1
     //and start prefix of read2
-    static String[] edgetypes = { "ff", "fe", "fr", "ef", "rf", "er", "rr", "re" };
+    static String[] edgetypes = { "ff", "fe", "fr", "ef",  "rr", "re", "rf", "er" };
     static String[] dirs = { "f", "r" };
 
     static Map<String, String> str2dna_ = initializeSTR2DNA();
@@ -2143,7 +2156,7 @@ public class Node {
 		double random_n = rand * 10000000;
 		System.out.println(random_n);
 		*/
-        String f_dna = "AATACACAGGTAAGACTCTGCACAGGACCAGATGGCGACACCAATCCG";
+        String f_dna = "AGCCTATAAAATACACAGGTAAGACTCTGCACAGGA";
         String r_dna = Node.rc(f_dna);
         System.out.println(r_dna);
     }

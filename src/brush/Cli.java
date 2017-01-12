@@ -44,21 +44,27 @@ public class Cli {
                 DuplicateEdgeRomoval dper = new DuplicateEdgeRomoval();
                 dper.run("/test_out2", "/test_out3");
 
+
+                DigraphMatix digimx = new DigraphMatix();
+                digimx.run("/test_out3", "/test_out4");
+
+                //------------------------------------------------------------
+                //TODO: Here I should use new algorithm to find directed path
+                /*
                 //Verify and group edges
                 VerifyOverlap vo = new VerifyOverlap();
                 vo.run("/test_out3", "/test_out4");
-
                 //TransitiveReduction
                 TransitiveReduction tr = new TransitiveReduction();
                 tr.run("/test_out4","/test_out5", "0.00f", "99");
-
                 //EdgeRemoval
                 EdgeRemoval er = new EdgeRemoval();
                 er.run("/test_out5","/test_out6");
-
                 //Compressible
                 Compressible cmp = new Compressible();
                 cmp.run("/test_out6","/test_out7");
+                */
+
 
             } else {
                 help();
